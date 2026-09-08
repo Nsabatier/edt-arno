@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FDFDFB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131924" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Emploi du temps">
+<title>Emploi du temps · Arno</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231A2440'/%3E%3Cpath d='M10 6v20M6 12h20M6 19h20' stroke='%23FDFDFB' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..112,400..700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FDFDFB;
+    --rule:#C9D4EE;
+    --rule-soft:#E6EAF5;
+    --margin:#D6455E;
+    --ink:#1A2440;
+    --ink-soft:#69738F;
+    --ink-faint:#9AA3BA;
+    --hour:62px;          /* hauteur d'une heure */
+    --gutter:46px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#131924;
+      --rule:#2C3852;
+      --rule-soft:#242E42;
+      --margin:#FF6E85;
+      --ink:#E9EDF6;
+      --ink-soft:#98A3BC;
+      --ink-faint:#5D6884;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+    font-variation-settings:"wdth" 100;
+    font-size:16px;line-height:1.35;
+    padding:0 max(14px,env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom));
+    max-width:640px;margin-inline:auto;
+    -webkit-tap-highlight-color:transparent;
+  }
+  header{position:sticky;top:0;z-index:5;background:var(--paper);padding-top:14px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .who{font-size:13px;color:var(--ink-faint);letter-spacing:.02em}
+  .seg{display:inline-flex;border:1px solid var(--rule);border-radius:20px;overflow:hidden;flex:0 0 auto}
+  .seg button{padding:4px 12px 5px;font-size:12.5px;color:var(--ink-soft);line-height:1.2}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+  .datebar{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:2px}
+  h1{
+    margin:0;font-size:clamp(28px,8vw,38px);font-weight:600;
+    font-variation-settings:"wdth" 78;letter-spacing:-.015em;line-height:1.05;
+  }
+  h1 .num{font-variation-settings:"wdth" 78;font-weight:700}
+  .arrows{display:flex;gap:6px;flex:0 0 auto}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  .arrow{
+    width:36px;height:36px;border:1px solid var(--rule);border-radius:50%;
+    display:grid;place-items:center;color:var(--ink-soft);
+  }
+  .arrow:active{background:var(--rule-soft)}
+  .arrow svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .recap{color:var(--ink-soft);font-size:14px;margin-top:6px;min-height:19px}
+  .recap b{color:var(--ink);font-weight:600}
+  .week{display:flex;gap:4px;margin:12px 0 0;padding-bottom:12px}
+  .week[hidden]{display:none}
+  .chip{
+    flex:1;padding:7px 0 6px;border-radius:9px;text-align:center;line-height:1.15;
+    color:var(--ink-soft);border:1px solid transparent;
+  }
+  .chip span{display:block;font-size:10px;letter-spacing:.08em;color:var(--ink-faint)}
+  .chip b{font-size:16px;font-weight:600}
+  .chip.has{color:var(--ink)}
+  .chip.today b{color:var(--margin)}
+  .chip[aria-current="true"]{border-color:var(--rule);background:var(--rule-soft)}
+
+  main{position:relative;padding-left:var(--gutter);margin-top:12px}
+  main.vide .margin-line,main.vide .grid{display:none}
+  .margin-line{position:absolute;left:calc(var(--gutter) - 13px);top:0;bottom:0;width:1px;background:var(--margin);opacity:.5}
+  .grid{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+  .grid i{position:absolute;left:var(--gutter);right:0;height:1px;background:var(--rule-soft)}
+  .grid i.h{background:var(--rule)}
+  .grid u{
+    position:absolute;left:0;width:calc(var(--gutter) - 20px);
+    text-align:right;font-size:12px;color:var(--ink-faint);font-style:normal;
+    transform:translateY(-7px);font-variant-numeric:tabular-nums;
+    text-decoration:none;
+  }
+  .canvas{position:relative}
+  .course{
+    position:absolute;left:0;right:0;padding:6px 10px 6px 12px;border-radius:0 3px 3px 0;
+    border-left:3px solid var(--ink);background:var(--paper);overflow:hidden;
+  }
+  .course h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta{font-size:12.5px;color:var(--ink-soft);margin-top:1px;font-variant-numeric:tabular-nums}
+  .meta em{font-style:normal;color:var(--ink-faint)}
+  .course.short{padding-top:3px}
+  .course.short h2{font-size:13.5px}
+  .course.short .meta{font-size:11.5px}
+  .course.off{border-left-color:var(--ink-faint);opacity:.62}
+  .course.off h2{text-decoration:line-through;text-decoration-thickness:1px}
+  .flag{
+    display:inline-block;margin-left:6px;padding:1px 6px 0;border:1px solid var(--margin);
+    color:var(--margin);border-radius:20px;font-size:10.5px;vertical-align:1px;white-space:nowrap;
+  }
+  .gap{position:absolute;left:0;right:0;display:flex;align-items:center;gap:8px;
+    font-size:11.5px;color:var(--ink-faint)}
+  .gap::before,.gap::after{content:"";flex:1;border-top:1px dotted var(--rule)}
+  .now{position:absolute;left:-13px;right:0;height:1px;background:var(--margin);z-index:3}
+  .now::before{content:"";position:absolute;left:-4px;top:-3.5px;width:8px;height:8px;
+    border-radius:50%;background:var(--margin)}
+  .note{margin-top:3px;font-size:12px;color:var(--ink-soft);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    white-space:pre-line}
+  .weekview{margin-top:14px}
+  .grille{overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:6px}
+  .gi{display:grid;grid-template-columns:30px repeat(var(--cols), minmax(0, 1fr));
+    min-width:100%}
+  .coin,.marge{position:sticky;left:0;background:var(--paper);z-index:2}
+  .jt{
+    text-align:center;padding:0 2px 7px;font-size:12.5px;
+    color:var(--ink-soft);font-weight:600;border-bottom:1px solid var(--rule);
+  }
+  .jt b{font-variation-settings:"wdth" 84}
+  .jt.auj{color:var(--margin)}
+  .coin{border-bottom:1px solid var(--rule)}
+  .marge{position:sticky;left:0}
+  .marge u{
+    position:absolute;left:0;width:24px;text-align:right;font-size:11px;
+    color:var(--ink-faint);font-style:normal;text-decoration:none;
+    transform:translateY(-6px);font-variant-numeric:tabular-nums;background:var(--paper);
+  }
+  .col{position:relative;border-left:1px solid var(--rule-soft)}
+  .col.libre{background:var(--rule-soft);opacity:.35}
+  .bloc{
+    position:absolute;left:1px;right:1px;padding:4px 4px 4px 5px;overflow:hidden;
+    border-left:2px solid var(--ink);background:var(--paper);border-radius:0 3px 3px 0;
+  }
+  .bloc .m{display:block;font-size:11px;font-weight:600;line-height:1.15;
+    letter-spacing:-.01em;hyphens:auto}
+  .bloc .t{display:block;font-size:9.5px;color:var(--ink-soft);margin-top:2px;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+  .bloc .sa{display:block;font-size:10px;color:var(--ink-faint);margin-top:1px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bloc.court{padding:2px 5px}
+  .bloc.court .t{margin-top:0}
+  .bloc.off{border-left-color:var(--ink-faint);opacity:.55}
+  .bloc.off .m{text-decoration:line-through;text-decoration-thickness:1px}
+  .bloc.devoir::after{content:"";position:absolute;top:4px;right:3px;width:5px;height:5px;
+    border-radius:50%;background:var(--margin)}
+  .vide-semaine{padding:44px 4px;color:var(--ink-soft);font-size:16px}
+  @media (min-width:520px){
+    .bloc .m{font-size:12.5px}
+    .bloc .t,.bloc .sa{font-size:11px}
+    .jt{font-size:13px}
+  }
+  .todo{margin-top:26px}
+  .todo:empty{display:none}
+  .todo h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--margin);
+    font-variation-settings:"wdth" 88}
+  .todo article{padding:9px 0 10px;border-top:1px solid var(--rule-soft)}
+  .todo article:last-child{border-bottom:1px solid var(--rule-soft)}
+  .todo h4{margin:0;font-size:14px;font-weight:600}
+  .todo p{margin:3px 0 0;font-size:13.5px;color:var(--ink-soft);white-space:pre-line;line-height:1.45}
+  .todo .given{font-size:11.5px;color:var(--ink-faint);font-weight:400}
+  .chip s{display:block;height:4px;width:4px;border-radius:50%;background:var(--margin);
+    margin:3px auto 0;text-decoration:none}
+  .chip s.none{background:transparent}
+  .empty{padding:52px 4px;color:var(--ink-soft);font-size:17px;line-height:1.5}
+  .empty b{display:block;font-size:22px;font-weight:600;color:var(--ink);
+    font-variation-settings:"wdth" 82;margin-bottom:4px}
+  footer{margin-top:22px;font-size:11.5px;color:var(--ink-faint);display:flex;
+    justify-content:space-between;gap:10px;align-items:center}
+  footer button{color:var(--ink-soft);text-decoration:underline;text-underline-offset:2px}
+  @media (prefers-reduced-motion: no-preference){
+    .canvas{transition:opacity .12s ease}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="who" id="who">Arno</div>
+    <div class="seg">
+      <button id="vJour" aria-pressed="true">Jour</button>
+      <button id="vSemaine" aria-pressed="false">Semaine</button>
+    </div>
+  </div>
+  <div class="datebar">
+    <h1 id="title">—</h1>
+    <div class="arrows">
+      <button class="arrow" id="prev" aria-label="Jour précédent"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="arrow" id="next" aria-label="Jour suivant"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+  <div class="recap" id="recap"></div>
+  <nav class="week" id="week"></nav>
+</header>
+
+<main id="main">
+  <div class="margin-line"></div>
+  <div class="grid" id="grid"></div>
+  <div class="canvas" id="canvas"></div>
+</main>
+
+<div class="weekview" id="weekview" hidden></div>
+
+<section class="todo" id="todo"></section>
+
+<footer>
+  <span id="built"></span>
+  <button id="todayBtn">Aujourd'hui</button>
+</footer>
+
+<script>
+const DATA = {"student":"Arno","built":"2026-09-08T09:41","days":{"2026-09-04":[{"start":"08:05","end":"08:30","min":485,"len":25,"subject":"Vie de classe","short":"Vie de classe","teacher":"CUVILLIER S.","room":"B304","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"B304","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"S1 VB :\nS1 VB\n\nSe préparer , techniques de frappes volley\nJouer en avançant seul ou à deux\n\n1x0; 2x0; 2x2\n\nBilan et niveaux observés","homework":"","given":""}],"2026-09-01":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"annulé","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"annulé","sport":false,"note":"","homework":"","given":""}],"2026-09-02":[{"start":"09:00","end":"09:55","min":540,"len":55,"subject":"Accueil de rentrée","short":"Accueil","teacher":"ZARAH E.","room":"B300","status":"modifié","sport":false,"note":"","homework":"","given":""}],"2026-09-03":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-11":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"S2 VB :\n\nSe préparer , techniques de frappes volley\nJouer en avançant seul ou à deux\n\n1x0;\nRetour sur technique 10D et manchette 1X1\n2x0;\nRetour sur orientation et jeu en triangle 3X0\n2x2; 3X3\nJeu à thème , organisation tactique\n\nBilan et niveaux observés","homework":"","given":""},{"start":"12:00","end":"12:50","min":720,"len":50,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-10":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-07":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"C10","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"C12","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"LABOS PC","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"C23","status":"salle changée","sport":false,"note":"","homework":"","given":""}],"2026-09-08":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"C25","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"LABOS SVT","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"C23","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"C23","status":"salle changée","sport":false,"note":"","homework":"Faire les exercices \"grammar\" et \"vocabulary\" de la fiche \"summer review\" + apprendre les mots nouveaux vus en classe.\nSummer review 2026 Doc 1.docx\nSummer review Doc 2.docx","given":"04/09/2026"}],"2026-09-09":[{"start":"09:00","end":"09:55","min":540,"len":55,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"C25","status":"salle changée","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"11:05","min":610,"len":55,"subject":"Vie de classe","short":"Vie de classe","teacher":"ZARAH E.","room":"C25","status":"modifié","sport":false,"note":"","homework":"","given":""}],"2026-09-18":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"","homework":"","given":""}],"2026-09-14":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-15":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-16":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"11:05","min":610,"len":55,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"Partie de classe : <1G B> 1G BP2","homework":"","given":""}],"2026-09-17":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-25":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"S1 VB :\nS1\n\nRappel : gourde obligatoire\n\nMise en train : se préparer technique VB\nSituation de jeu :\n- avancer pour aller marquer ; les techniques de frappes de balle en VB\nSituations : 1*0, 2*0, 1*1, etc\nMatch 3*3\nBilan et résultats : connaître son niveau de jeu et d’entraînement","homework":"","given":""}],"2026-09-21":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-22":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-23":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"11:05","min":610,"len":55,"subject":"Vie de classe","short":"Vie de classe","teacher":"","room":"","status":"","sport":false,"note":"Professeurs : DUFOUR M., ZARAH E.","homework":"","given":""}],"2026-09-24":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-02":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"","homework":"","given":""}],"2026-09-28":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-29":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-09-30":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"11:05","min":610,"len":55,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"Partie de classe : <1G B> 1G BP2","homework":"","given":""}],"2026-10-01":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-09":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"EPS","short":"EPS","teacher":"AZAIS P.","room":"PLATEAU SPORTIF","status":"","sport":true,"note":"","homework":"","given":""}],"2026-10-05":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-06":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-07":[{"start":"08:30","end":"09:55","min":510,"len":85,"subject":"Espagnol","short":"Espagnol","teacher":"DUFOUR M.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"11:05","min":610,"len":55,"subject":"Vie de classe","short":"Vie de classe","teacher":"","room":"","status":"","sport":false,"note":"Professeurs : DUFOUR M., ZARAH E.","homework":"","given":""}],"2026-10-08":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-12":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Histoire-géo","short":"Hist-géo","teacher":"ALOUI S.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Physique-chimie","short":"Physique-ch.","teacher":"PORTEIX C.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""}],"2026-10-13":[{"start":"08:05","end":"09:55","min":485,"len":110,"subject":"Maths","short":"Maths","teacher":"BERNARD F.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"10:10","end":"12:00","min":610,"len":110,"subject":"Biologie-écologie","short":"Bio-écologie","teacher":"PINON G.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"13:45","end":"15:35","min":825,"len":110,"subject":"Français","short":"Français","teacher":"ZARAH E.","room":"","status":"","sport":false,"note":"","homework":"","given":""},{"start":"15:50","end":"17:05","min":950,"len":75,"subject":"Anglais","short":"Anglais","teacher":"CUVILLIER S.","room":"","status":"","sport":false,"note":"","homework":"","given":""}]},"breaks":[{"from":"2026-10-18","to":"2026-11-01","label":"Vacances"},{"from":"2026-11-11","to":"2026-11-11","label":"Férié"},{"from":"2026-12-20","to":"2027-01-03","label":"Vacances"},{"from":"2027-02-07","to":"2027-02-21","label":"Vacances"},{"from":"2027-03-28","to":"2027-03-29","label":"Vacances"},{"from":"2027-04-04","to":"2027-04-18","label":"Vacances"},{"from":"2027-05-01","to":"2027-05-01","label":"Férié"},{"from":"2027-05-06","to":"2027-05-09","label":"Vacances"},{"from":"2027-05-16","to":"2027-05-17","label":"Vacances"}]};
+const HOUR = 62, PX = HOUR / 60;
+const dur = m => m >= 60
+  ? Math.floor(m / 60) + " h" + (m % 60 ? " " + String(m % 60).padStart(2, "0") : "")
+  : m + " min";
+const DAYS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+const MONTHS = ["janv.","févr.","mars","avril","mai","juin","juillet","août","sept.","oct.","nov.","déc."];
+const SHORT = ["D","L","M","M","J","V","S"];
+const SHORT_D = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
+
+const esc = s => String(s || "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+
+function parisNow() {
+  const now = new Date();
+  const paris = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+  return paris;
+}
+
+function breakFor(key) {
+  return DATA.breaks.find(b => key >= b.from && key <= b.to);
+}
+
+/* Le soir et le week-end, on montre le prochain jour de cours. */
+function defaultDay() {
+  const now = parisNow();
+  let cursor = new Date(now);
+  if (now.getHours() >= 18) cursor.setDate(cursor.getDate() + 1);
+  for (let i = 0; i < 21; i++) {
+    const key = iso(cursor);
+    if ((DATA.days[key] || []).length) return key;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return iso(now);
+}
+
+let current = defaultDay();
+let view = "jour";
+try { view = localStorage.getItem("vue") || "jour"; } catch (e) {}
+
+const monday = key => {
+  const d = parse(key);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+};
+
+function setView(v) {
+  view = v;
+  try { localStorage.setItem("vue", v); } catch (e) {}
+  render();
+}
+
+function render() {
+  document.getElementById("vJour").setAttribute("aria-pressed", view === "jour");
+  document.getElementById("vSemaine").setAttribute("aria-pressed", view === "semaine");
+  document.getElementById("main").hidden = view !== "jour";
+  document.getElementById("weekview").hidden = view !== "semaine";
+  document.getElementById("week").hidden = view === "semaine";
+  if (view === "semaine") return renderWeek();
+  renderDay();
+}
+
+function renderDay() {
+  const key = current;
+  const courses = DATA.days[key] || [];
+  const day = parse(key);
+  const today = iso(parisNow());
+
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  document.getElementById("who").textContent = key === today
+    ? DATA.student + " · " + DAYS[day.getDay()] + " " + day.getDate() + " " + MONTHS[day.getMonth()]
+    : DATA.student;
+  document.getElementById("title").innerHTML =
+    key === today ? "Aujourd'hui"
+    : `${cap(DAYS[day.getDay()])} <span class="num">${day.getDate()}</span> ${MONTHS[day.getMonth()]}`;
+
+  const recap = document.getElementById("recap");
+  const live = courses.filter(c => c.status !== "annulé");
+  if (live.length) {
+    const first = live[0], last = live[live.length - 1];
+    const busy = live.reduce((n, c) => n + c.len, 0);
+    const span = (last.min + last.len) - first.min;
+    const hole = Math.round((span - busy) / 5) * 5;
+    recap.innerHTML = `<b>${first.start} → ${last.end}</b> · ${live.length} cours`
+      + (hole >= 30 ? ` · ${dur(hole)} de trou` : "")
+      + (live.some(c => c.sport) ? " · sport" : "")
+      + (courses.some(c => c.homework) ? " · à faire" : "");
+  } else {
+    const br = breakFor(key);
+    recap.textContent = br ? br.label : "";
+  }
+
+  buildWeek(key, today);
+
+  const todo = document.getElementById("todo");
+  todo.innerHTML = courses.filter(c => c.homework).map(c =>
+    `<article><h4>${esc(c.subject)} <span class="given">donné le ${esc(c.given)}</span></h4>`
+    + `<p>${esc(c.homework)}</p></article>`).join("");
+  if (todo.innerHTML) todo.insertAdjacentHTML("afterbegin", "<h3>À faire</h3>");
+
+  const canvas = document.getElementById("canvas");
+  const grid = document.getElementById("grid");
+  canvas.innerHTML = ""; grid.innerHTML = "";
+
+  if (!courses.length) {
+    const br = breakFor(key);
+    const weekend = day.getDay() === 0 || day.getDay() === 6;
+    canvas.innerHTML = `<div class="empty"><b>${br ? br.label : (weekend ? "Week-end" : "Pas de cours")}</b>`
+      + `${br ? "Rien au programme jusqu'à la reprise." : (weekend ? "Rien au programme." : "Aucun cours dans le flux Pronote pour ce jour.")}</div>`;
+    canvas.style.height = "auto";
+    document.getElementById("main").classList.add("vide");
+    document.getElementById("todo").innerHTML = "";
+    return;
+  }
+
+  document.getElementById("main").classList.remove("vide");
+
+  const startMin = Math.floor(Math.min(...courses.map(c => c.min)) / 60) * 60;
+  const endMin = Math.ceil(Math.max(...courses.map(c => c.min + c.len)) / 30) * 30;
+  const top = m => (m - startMin) * PX;
+  canvas.style.height = (endMin - startMin) * PX + "px";
+
+  for (let m = startMin; m <= endMin; m += 30) {
+    const rule = document.createElement("i");
+    rule.style.top = top(m) + "px";
+    if (m % 60 === 0) {
+      rule.className = "h";
+      const label = document.createElement("u");
+      label.style.top = top(m) + "px";
+      label.textContent = String(m / 60).padStart(2, "0") + "h";
+      grid.appendChild(label);
+    }
+    grid.appendChild(rule);
+  }
+
+  // Les cours qui se chevauchent (un remplacement posé sur un cours annulé)
+  // sont regroupés pour être affichés côte à côte plutôt que superposés.
+  const clusters = [];
+  for (const c of courses) {
+    const last = clusters[clusters.length - 1];
+    if (last && c.min < Math.max(...last.map(x => x.min + x.len))) last.push(c);
+    else clusters.push([c]);
+  }
+
+  let previousEnd = null;
+  for (const cluster of clusters) {
+    const clusterStart = cluster[0].min;
+    if (previousEnd !== null && clusterStart - previousEnd >= 25) {
+      const gapMin = clusterStart - previousEnd;
+      const gap = document.createElement("div");
+      gap.className = "gap";
+      gap.style.top = top(previousEnd) + "px";
+      gap.style.height = gapMin * PX + "px";
+      gap.innerHTML = `<span>${gapMin >= 60 ? Math.floor(gapMin / 60) + " h" + (gapMin % 60 ? " " + (gapMin % 60) : "") : gapMin + " min"}</span>`;
+      canvas.appendChild(gap);
+    }
+
+    cluster.forEach((c, i) => {
+      const el = document.createElement("article");
+      el.className = "course" + (c.status === "annulé" ? " off" : "") + (c.len < 45 ? " short" : "");
+      el.style.top = top(c.min) + "px";
+      el.style.height = c.len * PX - 4 + "px";
+      if (cluster.length > 1) {
+        el.style.left = (i * 100 / cluster.length) + "%";
+        el.style.right = ((cluster.length - 1 - i) * 100 / cluster.length) + "%";
+      }
+      const flag = c.homework ? '<span class="flag">à faire</span>'
+        : c.status === "modifié" ? '<span class="flag">modifié</span>'
+        : c.sport ? '<span class="flag">tenue de sport</span>' : "";
+      const bits = [c.start + "–" + c.end];
+      if (c.room) bits.push(esc(c.room));
+      if (c.teacher) bits.push(`<em>${esc(c.teacher)}</em>`);
+      el.innerHTML = `<h2>${esc(c.subject)}${flag}</h2><div class="meta">${bits.join(" · ")}</div>`
+        + (c.note && c.len >= 90 && cluster.length === 1 ? `<div class="note">${esc(c.note)}</div>` : "");
+      canvas.appendChild(el);
+    });
+
+    previousEnd = Math.max(...cluster.map(c => c.min + c.len));
+  }
+
+  const now = parisNow();
+  if (key === today) {
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    if (minutes > startMin && minutes < endMin) {
+      const line = document.createElement("div");
+      line.className = "now";
+      line.style.top = top(minutes) + "px";
+      canvas.appendChild(line);
+    }
+  }
+}
+
+function renderWeek() {
+  const today = iso(parisNow());
+  const start = monday(current);
+  let days = [...Array(6)].map((_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+  const last = days[5];
+  // On retire le samedi s'il n'a pas cours : cinq colonnes respirent mieux.
+  if (!(DATA.days[iso(days[5])] || []).length) days = days.slice(0, 5);
+
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const sameMonth = start.getMonth() === last.getMonth();
+  document.getElementById("who").textContent = DATA.student;
+  document.getElementById("title").innerHTML =
+    `<span class="num">${start.getDate()}</span>${sameMonth ? "" : " " + MONTHS[start.getMonth()]}`
+    + ` – <span class="num">${last.getDate()}</span> ${MONTHS[last.getMonth()]}`;
+
+  const total = days.reduce((n, d) =>
+    n + (DATA.days[iso(d)] || []).filter(c => c.status !== "annulé").length, 0);
+  const br = breakFor(iso(days[2]));
+  document.getElementById("recap").textContent =
+    total ? `${total} cours dans la semaine` : (br ? br.label : "Pas de cours cette semaine");
+
+  const box = document.getElementById("weekview");
+  const all = days.flatMap(d => DATA.days[iso(d)] || []);
+
+  if (!all.length) {
+    box.innerHTML = `<div class="vide-semaine">${br ? br.label : "Pas de cours cette semaine."}</div>`;
+  } else {
+    // Une seule échelle de temps pour toute la semaine, arrondie à la demi-heure.
+    const startMin = Math.floor(Math.min(...all.map(c => c.min)) / 30) * 30;
+    const endMin = Math.ceil(Math.max(...all.map(c => c.min + c.len)) / 30) * 30;
+    const hauteur = (endMin - startMin) * PX;
+    const top = m => (m - startMin) * PX;
+    const decalage = (startMin % 60 ? 30 : 0) * PX;
+
+    const fond = `background-image:`
+      + `repeating-linear-gradient(to bottom,var(--rule) 0 1px,transparent 1px ${60 * PX}px),`
+      + `repeating-linear-gradient(to bottom,var(--rule-soft) 0 1px,transparent 1px ${30 * PX}px);`
+      + `background-position:0 ${decalage}px,0 0;`;
+
+    const heures = [];
+    for (let m = Math.ceil(startMin / 60) * 60; m <= endMin; m += 60) {
+      heures.push(`<u style="top:${top(m)}px">${String(m / 60).padStart(2, "0")}h</u>`);
+    }
+
+    const colonnes = days.map(d => {
+      const key = iso(d);
+      const courses = DATA.days[key] || [];
+      if (!courses.length) return `<div class="col libre" style="height:${hauteur}px"></div>`;
+
+      const blocs = courses.map(c => {
+        const h = c.len * PX - 3;
+        const classes = ["bloc"];
+        if (c.status === "annulé") classes.push("off");
+        if (c.homework) classes.push("devoir");
+        if (c.len < 60) classes.push("court");
+        return `<article class="${classes.join(" ")}" style="top:${top(c.min)}px;height:${h}px">`
+          + `<span class="m">${esc(c.short)}</span>`
+          + `<span class="t">${c.start}–${c.end}</span>`
+          + (c.room && c.len >= 60 ? `<span class="sa">${esc(c.room)}</span>` : "")
+          + `</article>`;
+      }).join("");
+
+      return `<div class="col" data-jour="${key}" style="height:${hauteur}px;${fond}">${blocs}</div>`;
+    }).join("");
+
+    const tetes = days.map(d => {
+      const key = iso(d);
+      return `<button class="jt ${key === today ? "auj" : ""}" data-jour="${key}">`
+        + `${SHORT_D[d.getDay()]} <b>${d.getDate()}</b></button>`;
+    }).join("");
+
+    box.innerHTML = `<div class="grille"><div class="gi" style="--cols:${days.length}">`
+      + `<div class="coin"></div>${tetes}`
+      + `<div class="marge" style="height:${hauteur}px">${heures.join("")}</div>`
+      + colonnes
+      + `</div></div>`;
+  }
+
+  box.querySelectorAll("[data-jour]").forEach(el => {
+    el.onclick = () => { current = el.dataset.jour; setView("jour"); };
+  });
+
+  // Le travail à faire de toute la semaine, jour par jour.
+  const todo = document.getElementById("todo");
+  todo.innerHTML = days.flatMap(d => (DATA.days[iso(d)] || [])
+    .filter(c => c.homework)
+    .map(c => `<article><h4>${esc(c.subject)} `
+      + `<span class="given">pour ${DAYS[d.getDay()]} ${d.getDate()}</span></h4>`
+      + `<p>${esc(c.homework)}</p></article>`)).join("");
+  if (todo.innerHTML) todo.insertAdjacentHTML("afterbegin", "<h3>À faire</h3>");
+}
+
+function buildWeek(key, today) {
+  const week = document.getElementById("week");
+  week.innerHTML = "";
+  const day = parse(key);
+  const monday = new Date(day);
+  monday.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const k = iso(d);
+    const has = (DATA.days[k] || []).length > 0;
+    const btn = document.createElement("button");
+    btn.className = "chip" + (has ? " has" : "") + (k === today ? " today" : "");
+    if (k === key && view === "jour") btn.setAttribute("aria-current", "true");
+    const flagged = (DATA.days[k] || []).some(c => c.homework);
+    btn.innerHTML = `<span>${SHORT[d.getDay()]}</span><b>${d.getDate()}</b>`
+      + `<s class="${flagged ? "" : "none"}"></s>`;
+    btn.onclick = () => { current = k; if (view === "semaine") setView("jour"); else render(); };
+    week.appendChild(btn);
+  }
+}
+
+function shift(n) {
+  const d = view === "semaine" ? monday(current) : parse(current);
+  d.setDate(d.getDate() + n * (view === "semaine" ? 7 : 1));
+  current = iso(d);
+  render();
+}
+
+document.getElementById("vJour").onclick = () => setView("jour");
+document.getElementById("vSemaine").onclick = () => setView("semaine");
+document.getElementById("prev").onclick = () => shift(-1);
+document.getElementById("next").onclick = () => shift(1);
+document.getElementById("todayBtn").onclick = () => { current = defaultDay(); render(); };
+document.getElementById("prev").setAttribute("aria-label", "Précédent");
+document.getElementById("next").setAttribute("aria-label", "Suivant");
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") shift(-1);
+  if (e.key === "ArrowRight") shift(1);
+});
+
+let touchX = null;
+document.addEventListener("touchstart", e => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+document.addEventListener("touchend", e => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 60) shift(dx < 0 ? 1 : -1);
+  touchX = null;
+}, { passive: true });
+
+document.getElementById("built").textContent = "Mis à jour le " + DATA.built.replace("T", " à ");
+render();
+setInterval(render, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+</script>
+</body>
+</html>
